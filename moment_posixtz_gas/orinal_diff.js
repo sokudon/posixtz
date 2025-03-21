@@ -1,15 +1,20 @@
-const moment = require('moment-timezone');
+// moment は moment.js と moment-timezone.js によりグローバルに定義済みと仮定
+// require('moment-timezone') を削除
+//ぐぐったらみつかった　posixtz対応のmoment-timezone.jsかくちょうらいぶららりー
+//https://github.com/jdiamond/posixtz/blob/master/index.js
+//2025/03/21　dateformat_posixもたぶんうまく動いていないようなので変更, z はzoneparserがいるので未対応
+//2025/03/20　posix 対応javascriptを見つけたがばぐってるので修正（）、たぶんもとはUTCサーバーたいむじゃないと動かないハズ（）
+//ぐろっくたんの評価　https://grok.com/share/bGVnYWN5_7dee4cb7-10a9-4f1c-bea4-540a91679d5c
 
-exports.formatPosixTZ = formatPosixTZ;
-exports.parsePosixTZ = parsePosixTZ;
-exports.getOffsetForLocalDateWithPosixTZ = getOffsetForLocalDateWithPosixTZ;
-exports.formatLocalDateWithOffset = formatLocalDateWithOffset;
+// グローバルオブジェクトとして関数を定義（exportsを削除）
+const posixtz = {
+  formatPosixTZ: formatPosixTZ,
+  parsePosixTZ: parsePosixTZ,
+  getOffsetForLocalDateWithPosixTZ: getOffsetForLocalDateWithPosixTZ,
+  formatLocalDateWithOffset: formatLocalDateWithOffset
+};
 
 function formatPosixTZ(tz, year) {
-  // This code originally came from here:
-  // https://github.com/moment/moment-timezone/issues/314
-  // Slightly modified to be more correct.
-
   var jan = moment.tz({ year, month: 0, day: 1 }, tz);
   var jun = moment.tz({ year, month: 5, day: 1 }, tz);
   var janOffset = jan.utcOffset();
@@ -55,12 +60,6 @@ function formatPosixTZ(tz, year) {
     var n = getWeekNumber(transition);
 
     if (n === 4) {
-      // Some time zones transition on the _last_ Sunday of a month. That could
-      // be the 4th or 5th Sunday depending on the year. The POSIX TZ format
-      // uses "5" to represent "last" even on years when there are only 4
-      // occurrences of that day in a given month. This loop looks forward 6
-      // more years to try to catch that. I don't think this is foolproof, but I
-      // haven't seen it be wrong for the current year yet.
       for (var i = 1; i <= 6; i++) {
         var nextTransition = getTransition(tz, m.clone().add(i, 'years'));
 
@@ -113,20 +112,28 @@ function parsePosixTZ(tz) {
   };
 
   const parts = tz.split(',');
-
   const localTZ = parts[0];
 
-  const LOCAL_TZ_RE = /(\w+)([+-]?\d+)(\w+([+-]?\d+)?)?/;
+// localTZ の部分だけをマッチさせる正規表現
+  const regex = /^(?:<[+-]\d{2,4}>-\d{1,2}(?::[0-5]\d)?(?:<[+-]\d{2,4}>-\d{1,2}(?::[0-5]\d)?)?|<[+-]\d{2,4}>-\d{1,2}(?::[0-5]\d)?|[A-Za-z]{3,}[-+]?\d+(?::[0-5]\d)?(?:[A-Za-z]{3,})?|<-?\d+>\d(?:<-?\d+>)?|[A-Za-z]{3,}[-+]?\d+)$/;
+  
+  const match_tz = regex.exec(localTZ);
+  if (!match_tz) {
+    return null;
+  }
+
+
+  const LOCAL_TZ_RE = /^(\w+)([+-]?\d+)(\w+([+-]?\d+)?)?/;
+  const LOCAL_TZ_AB  = /^(<.*?>)([+-]?\d+(?::\d+)?)(?:(<.*?>)([+-]?\d+(?::\d+)?)?)?/;  //angle brackets
   // Groups:           1    2         3   4
   // 1: stdAbbr
   // 2: stdOffset
   // 3: dstAbbr
   // 4: dstOffset
 
-  const match = LOCAL_TZ_RE.exec(localTZ);
-
+  var match = LOCAL_TZ_RE.exec(localTZ);
   if (!match) {
-    return null;
+    match = LOCAL_TZ_AB.exec(localTZ);
   }
 
   result.stdAbbr = match[1];
@@ -143,14 +150,13 @@ function parsePosixTZ(tz) {
   return result;
 
   function parseOffset(offset) {
-    // TODO: support hh:mm:ss
-    let hours = Number(offset);
-
-    if (hours) {
-      hours *= -1;
+    // hh:mm形式に対応
+    const [hours, minutes] = offset.split(':');
+    let totalMinutes = Number(hours) * 60;
+    if (minutes !== undefined) {
+      totalMinutes += Number(minutes) * (hours[0] === '-' ? -1 : 1);
     }
-
-    return hours * 60;
+    return totalMinutes * -1; // POSIXでは正のオフセットが西側、負が東側
   }
 
   function parseTransition(transition) {
@@ -183,30 +189,36 @@ function parsePosixTZ(tz) {
       );
     }
 
-    // TODO: support J
-
-    return null;
+    return null; // TODO: J形式のサポートが必要なら追加
   }
 }
 
 function getOffsetForLocalDateWithPosixTZ(localDate, posixTZ) {
   const dt = moment.utc(localDate);
-
   const parsedTZ = parsePosixTZ(posixTZ);
+   
 
   if (parsedTZ.dst) {
     const year = dt.year();
-    const dstStart = transitionToDate(year, parsedTZ.dstStart);
-    const dstEnd = transitionToDate(year, parsedTZ.dstEnd);
+    const dstStart = transitionToDate(year, parsedTZ.dstStart,parsedTZ.stdOffset);
+    const dstEnd = transitionToDate(year, parsedTZ.dstEnd,parsedTZ.dstOffset);
+   
 
+  　if(dstStart > dstEnd){
+    if (dt >= dstStart || dt < dstEnd) {
+      return parsedTZ.dstOffset;
+    }
+    }
+    else{
     if (dt >= dstStart && dt < dstEnd) {
       return parsedTZ.dstOffset;
+    }
     }
   }
 
   return parsedTZ.stdOffset;
 
-  function transitionToDate(year, { month, week, day, hour, minute, second }) {
+  function transitionToDate(year, { month, week, day, hour, minute, second },offset) {
     const jsMonth = month - 1;
 
     const dt = moment.utc({ year, month: jsMonth });
@@ -225,16 +237,54 @@ function getOffsetForLocalDateWithPosixTZ(localDate, posixTZ) {
       }
     }
 
+
     dt.set({ hour, minute, second });
+    dt.subtract(offset,'m');
 
     return dt.toDate();
   }
 }
 
 function formatLocalDateWithOffset(localDate, posixTZ) {
-  const dt = moment.utc(localDate);
+  const dt = moment(localDate);//utc not needed
   const offset = getOffsetForLocalDateWithPosixTZ(dt, posixTZ);
-  const dtWithOffset = dt.clone().utcOffset(offset);
 
-  return dt.format('YYYY-MM-DDTHH:mm:ss') + dtWithOffset.format('Z');
+  return  dt.utcOffset(offset).format('YYYY-MM-DDTHH:mm:ssZ');
+}
+
+//add custom function
+function getOffset_PosixTZ(localDate, posixTZ,mode) {
+var unit= moment.normalizeUnits(mode);
+var offset=  getOffsetForLocalDateWithPosixTZ(localDate, posixTZ);
+switch (unit) {//h hours alies,momentjis
+            case 'millisecond':
+                return offset*60*1000;
+            case 'second':
+                return offset*60;
+            case 'minute':
+                return offset;
+            case 'hour':
+                return offset/60;
+            case 'day':
+                return offset/60/24;
+            default:
+                return offset; 
+                }
+return;
+}
+
+function dateFormat_PosixTZ(localDate, posixTZ,tz_format) {
+  const dt = moment(localDate);
+  const offset = getOffsetForLocalDateWithPosixTZ(dt, posixTZ);
+  dt.utcOffset(offset);
+
+  //const parsedTZ = parsePosixTZ(posixTZ);
+  //var isDST=dt.isDST();   z not　support
+  //to z support need parse packed_zone string ,generate by posix_string
+  //https://momentjs.com/timezone/docs/#/data-loading/adding-a-zone/
+  //https://momentjs.com/timezone/docs/#/data-formats/packed-format/
+
+  tz_format=tz_format.replace(/z/gm,"");
+
+  return dt.format(tz_format);
 }
