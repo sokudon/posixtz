@@ -1,0 +1,3 @@
+https://github.com/sokudon/moment_gas-utilities
+Google Apps Script: Google Workspace ようの修正
+add　script でインクルード、momentjs_hashローダーは使っても使わなくてもどっちでもいいけど
