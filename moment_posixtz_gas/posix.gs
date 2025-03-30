@@ -2,6 +2,7 @@
 // require('moment-timezone') を削除
 //ぐぐったらみつかった　posixtz対応のmoment-timezone.jsかくちょうらいぶららりー
 //https://github.com/jdiamond/posixtz/blob/master/index.js
+//2025/03/30 ｚを戻り値{}にすることでできたので修正
 //2025/03/21　dateformat_posixもたぶんうまく動いていないようなので変更, z はzoneparserがいるので未対応
 //2025/03/20　posix 対応javascriptを見つけたがばぐってるので修正（）、たぶんもとはUTCサーバーたいむじゃないと動かないハズ（）
 //ぐろっくたんの評価　https://grok.com/share/bGVnYWN5_7dee4cb7-10a9-4f1c-bea4-540a91679d5c
@@ -206,17 +207,17 @@ function getOffsetForLocalDateWithPosixTZ(localDate, posixTZ) {
 
   　if(dstStart > dstEnd){
     if (dt >= dstStart || dt < dstEnd) {
-      return parsedTZ.dstOffset;
+      return { offset: parsedTZ.dstOffset, abbr: parsedTZ.dstAbbr };
     }
     }
     else{
     if (dt >= dstStart && dt < dstEnd) {
-      return parsedTZ.dstOffset;
+      return { offset: parsedTZ.dstOffset, abbr: parsedTZ.dstAbbr };
     }
     }
   }
 
-  return parsedTZ.stdOffset;
+  return { offset: parsedTZ.stdOffset, abbr: parsedTZ.stdAbbr };
 
   function transitionToDate(year, { month, week, day, hour, minute, second },offset) {
     const jsMonth = month - 1;
@@ -247,7 +248,7 @@ function getOffsetForLocalDateWithPosixTZ(localDate, posixTZ) {
 
 function formatLocalDateWithOffset(localDate, posixTZ) {
   const dt = moment(localDate);//utc not needed
-  const offset = getOffsetForLocalDateWithPosixTZ(dt, posixTZ);
+  const { offset } = getOffsetForLocalDateWithPosixTZ(dt, posixTZ);
 
   return  dt.utcOffset(offset).format('YYYY-MM-DDTHH:mm:ssZ');
 }
@@ -255,7 +256,7 @@ function formatLocalDateWithOffset(localDate, posixTZ) {
 //add custom function
 function getOffset_PosixTZ(localDate, posixTZ,mode) {
 var unit= moment.normalizeUnits(mode);
-var offset=  getOffsetForLocalDateWithPosixTZ(localDate, posixTZ);
+var { offset }=  getOffsetForLocalDateWithPosixTZ(localDate, posixTZ);
 switch (unit) {//h hours alies,momentjis
             case 'millisecond':
                 return offset*60*1000;
@@ -273,18 +274,17 @@ switch (unit) {//h hours alies,momentjis
 return;
 }
 
+function getAbbr_PosixTZ(localDate, posixTZ) {
+var { abbr }=  getOffsetForLocalDateWithPosixTZ(localDate, posixTZ);
+return abbr;
+}
+
 function dateFormat_PosixTZ(localDate, posixTZ,tz_format) {
   const dt = moment(localDate);
-  const offset = getOffsetForLocalDateWithPosixTZ(dt, posixTZ);
+  const { offset, abbr } = getOffsetForLocalDateWithPosixTZ(dt, posixTZ);
   dt.utcOffset(offset);
 
-  //const parsedTZ = parsePosixTZ(posixTZ);
-  //var isDST=dt.isDST();   z not　support
-  //to z support need parse packed_zone string ,generate by posix_string
-  //https://momentjs.com/timezone/docs/#/data-loading/adding-a-zone/
-  //https://momentjs.com/timezone/docs/#/data-formats/packed-format/
-
-  tz_format=tz_format.replace(/z/gm,"");
+  tz_format=tz_format.replace(/z/gm,"["+abbr+"]");
 
   return dt.format(tz_format);
 }

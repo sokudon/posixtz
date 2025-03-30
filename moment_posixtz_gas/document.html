@@ -1,0 +1,271 @@
+//gemini ai generated document
+
+---
+
+## HTML形式 (`.html`)
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>posixtz.js Documentation</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; }
+        h1, h2, h3 { color: #333; }
+        code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+        pre { background-color: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        ul { margin-left: 20px; }
+        li { margin-bottom: 0.5em; }
+    </style>
+</head>
+<body>
+
+    <h1>posixtz.js Documentation</h1>
+
+    <h2>Overview</h2>
+    <p>This script provides a set of functions for handling POSIX timezone (TZ) strings within a JavaScript environment where <code>moment.js</code> and <code>moment-timezone.js</code> are globally available (e.g., Google Apps Script). It allows for:</p>
+    <ol>
+        <li><strong>Generating</strong> POSIX TZ strings from standard IANA timezone identifiers (like <code>America/New_York</code>).</li>
+        <li><strong>Parsing</strong> POSIX TZ strings into structured data representing standard time, daylight saving time (DST) rules, and offsets.</li>
+        <li><strong>Calculating</strong> the correct UTC offset and timezone abbreviation for a specific <em>local</em> date and time based on the rules defined in a POSIX TZ string.</li>
+        <li><strong>Formatting</strong> dates using the calculated POSIX TZ offset and abbreviation.</li>
+    </ol>
+    <p>This script appears to be based on or adapted from <a href="https://github.com/jdiamond/posixtz" target="_blank" rel="noopener noreferrer">jdiamond/posixtz</a>, modified to work without <code>require</code> and potentially including custom additions.</p>
+
+    <h2>Prerequisites</h2>
+    <ul>
+        <li><strong>moment.js:</strong> Must be loaded and globally accessible.</li>
+        <li><strong>moment-timezone.js:</strong> Must be loaded (with timezone data) and globally accessible.</li>
+    </ul>
+
+    <h2>Global Object: <code>posixtz</code></h2>
+    <p>The script defines a global object <code>posixtz</code> which exposes the core functions:</p>
+    <ul>
+        <li><code>posixtz.formatPosixTZ</code></li>
+        <li><code>posixtz.parsePosixTZ</code></li>
+        <li><code>posixtz.getOffsetForLocalDateWithPosixTZ</code></li>
+        <li><code>posixtz.formatLocalDateWithOffset</code></li>
+    </ul>
+
+    <h2>Functions within <code>posixtz</code></h2>
+
+    <h3><code>posixtz.formatPosixTZ(tz, year)</code></h3>
+    <p>Generates a POSIX TZ string representation for a given IANA timezone identifier and year.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>tz</code> (<code>String</code>): An IANA timezone identifier (e.g., <code>'America/New_York'</code>, <code>'Europe/London'</code>).</li>
+                <li><code>year</code> (<code>Number</code>): The specific year for which to determine the DST transition rules, as these can change.</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>String</code>) The generated POSIX TZ string (e.g., <code>'EST5EDT,M3.2.0/2,M11.1.0/2'</code>). Returns a simpler format if there's no DST or if DST rules cannot be determined for that year.</li>
+    </ul>
+
+    <h3><code>posixtz.parsePosixTZ(tz)</code></h3>
+    <p>Parses a POSIX TZ string into a structured object containing timezone rule details.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>tz</code> (<code>String</code>): The POSIX TZ string to parse (e.g., <code>'EST5EDT,M3.2.0/2,M11.1.0/2'</code>).</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>Object | null</code>) An object detailing the parsed rules, or <code>null</code> if parsing fails. The object structure is:
+            <pre><code class="language-javascript">{
+  stdAbbr: String,  // Standard time abbreviation (e.g., 'EST')
+  stdOffset: Number, // Standard time offset from UTC in minutes (negative for zones east of UTC, e.g., -300 for EST)
+  dst: Boolean,     // Whether DST rules are present
+  dstAbbr: String | null, // DST abbreviation (e.g., 'EDT') or null
+  dstOffset: Number | null, // DST offset from UTC in minutes (e.g., -240 for EDT) or null
+  dstStart: Object | null, // Object describing DST start rule, or null
+  dstEnd: Object | null    // Object describing DST end rule, or null
+}</code></pre>
+            The <code>dstStart</code> and <code>dstEnd</code> objects (if present) have the structure (for 'M' format):
+            <pre><code class="language-javascript">{
+  month: Number, // Month (1-12)
+  week: Number,  // Week of the month (1-5, where 5 means the last occurrence)
+  day: Number,   // Day of the week (0=Sunday, 6=Saturday)
+  hour: Number,  // Hour (0-23)
+  minute: Number,// Minute (0-59)
+  second: Number // Second (0-59)
+}</code></pre>
+            <em>Note: 'J' format parsing might not be fully supported.</em>
+        </li>
+    </ul>
+
+    <h3><code>posixtz.getOffsetForLocalDateWithPosixTZ(localDate, posixTZ)</code></h3>
+    <p>Calculates the applicable UTC offset and timezone abbreviation for a given <em>local</em> date/time according to the rules specified in a POSIX TZ string. This function determines whether standard time or DST is active at that specific local time.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>localDate</code> (<code>Date | String | Moment</code>): The <em>local</em> date and time for which to calculate the offset. Can be a JavaScript <code>Date</code> object, a date string parsable by <code>moment</code>, or a <code>moment</code> object. <em>Important: This should represent the time as it would appear on a clock in the target timezone, NOT a UTC time.</em></li>
+                <li><code>posixTZ</code> (<code>String</code>): The POSIX TZ string defining the timezone rules.</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>Object</code>) An object containing the calculated offset and abbreviation:
+            <pre><code class="language-javascript">{
+  offset: Number, // The applicable UTC offset in minutes (e.g., -300 for EST, -240 for EDT)
+  abbr: String    // The applicable timezone abbreviation (e.g., 'EST' or 'EDT')
+}</code></pre>
+        </li>
+    </ul>
+
+    <h3><code>posixtz.formatLocalDateWithOffset(localDate, posixTZ)</code></h3>
+    <p>Formats a given local date/time into an ISO 8601 string, applying the correct UTC offset derived from the POSIX TZ rules.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>localDate</code> (<code>Date | String | Moment</code>): The <em>local</em> date and time to format.</li>
+                <li><code>posixTZ</code> (<code>String</code>): The POSIX TZ string defining the timezone rules.</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>String</code>) The formatted date string in ISO 8601 format with the calculated offset (e.g., <code>'2025-07-04T10:00:00-04:00'</code>).</li>
+    </ul>
+
+    <h2>Additional Global Functions</h2>
+    <p>These functions are defined globally (not within the <code>posixtz</code> object) and provide convenient wrappers or variations.</p>
+
+    <h3><code>getOffset_PosixTZ(localDate, posixTZ, mode)</code></h3>
+    <p>Retrieves the UTC offset for a local date based on POSIX TZ rules, returning it in specified units.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>localDate</code> (<code>Date | String | Moment</code>): The local date and time.</li>
+                <li><code>posixTZ</code> (<code>String</code>): The POSIX TZ string.</li>
+                <li><code>mode</code> (<code>String</code>): The desired unit for the offset (e.g., <code>'hour'</code>, <code>'minute'</code>, <code>'second'</code>, <code>'millisecond'</code>, <code>'day'</code>). Defaults to <code>'minute'</code> if unrecognized.</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>Number</code>) The calculated offset in the specified units.</li>
+    </ul>
+
+    <h3><code>getAbbr_PosixTZ(localDate, posixTZ)</code></h3>
+    <p>Retrieves only the applicable timezone abbreviation (standard or DST) for a local date based on POSIX TZ rules.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>localDate</code> (<code>Date | String | Moment</code>): The local date and time.</li>
+                <li><code>posixTZ</code> (<code>String</code>): The POSIX TZ string.</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>String</code>) The applicable timezone abbreviation (e.g., <code>'EST'</code>, <code>'EDT'</code>).</li>
+    </ul>
+
+    <h3><code>dateFormat_PosixTZ(localDate, posixTZ, tz_format)</code></h3>
+    <p>Formats a local date according to a <code>moment.js</code> format string, applying the correct offset and abbreviation derived from the POSIX TZ string. It specifically replaces the <code>z</code> format specifier in <code>tz_format</code> with the calculated abbreviation.</p>
+    <ul>
+        <li><strong>Parameters:</strong>
+            <ul>
+                <li><code>localDate</code> (<code>Date | String | Moment</code>): The local date and time to format.</li>
+                <li><code>posixTZ</code> (<code>String</code>): The POSIX TZ string.</li>
+                <li><code>tz_format</code> (<code>String</code>): The <code>moment.js</code> format string (e.g., <code>'YYYY-MM-DD HH:mm:ss z'</code>). The <code>z</code> specifier will be replaced by the calculated POSIX abbreviation.</li>
+            </ul>
+        </li>
+        <li><strong>Returns:</strong> (<code>String</code>) The formatted date string.</li>
+    </ul>
+
+    <h2>Understanding POSIX TZ Strings</h2>
+    <p>POSIX TZ strings provide a concise way to define timezone rules. The general format is:</p>
+    <pre><code>std offset[dst[offset][,start[/time],end[/time]]]</code></pre>
+    <ul>
+        <li><code>std</code>: Abbreviation for standard time (e.g., <code>EST</code>).</li>
+        <li><code>offset</code>: Offset from UTC for standard time. Positive values are <em>west</em> of UTC, negative are <em>east</em>. Hours, or hh:mm:ss. (e.g., <code>5</code> for EST, which is UTC-5).</li>
+        <li><code>dst</code>: Abbreviation for daylight saving time (e.g., <code>EDT</code>). Optional.</li>
+        <li><code>offset</code>: Offset for DST. If omitted, defaults to one hour less than the standard offset (e.g., <code>4</code> for EDT). Optional.</li>
+        <li><code>,start[/time],end[/time]</code>: Rules for when DST starts and ends. Optional.
+            <ul>
+                <li><code>Jn</code>: Julian day (1-365). Leap days ignored.</li>
+                <li><code>n</code>: Zero-based Julian day (0-365). Leap days counted.</li>
+                <li><code>Mm.w.d</code>: Month (<code>M1</code>-<code>M12</code>), week (<code>1</code>-<code>5</code>, 5=last), day (<code>0</code>=Sun, <code>6</code>=Sat).</li>
+                <li><code>time</code>: Time of transition (hh:mm:ss). Defaults to <code>02:00:00</code>.</li>
+            </ul>
+        </li>
+    </ul>
+    <p>Example: <code>EST5EDT,M3.2.0/2,M11.1.0/2</code></p>
+    <ul>
+        <li>Standard: EST, 5 hours west of UTC (UTC-5)</li>
+        <li>DST: EDT, offset defaults to 4 hours west of UTC (UTC-4)</li>
+        <li>Start: March (M3), 2nd week (2), Sunday (0), at 2 AM (/2)</li>
+        <li>End: November (M11), 1st week (1), Sunday (0), at 2 AM (/2)</li>
+    </ul>
+
+    <h2>Usage Examples</h2>
+    <pre><code class="language-javascript">// Assume moment.js and moment-timezone.js are loaded
+
+// --- Using functions within posixtz ---
+
+// 1. Generate POSIX string for America/New_York for 2025
+const nyPosix = posixtz.formatPosixTZ('America/New_York', 2025);
+console.log('New York POSIX (2025):', nyPosix);
+// Example Output: New York POSIX (2025): EST5EDT,M3.2.0/2,M11.1.0/2
+
+// 2. Parse the generated POSIX string
+const parsedNY = posixtz.parsePosixTZ(nyPosix);
+console.log('Parsed NY:', JSON.stringify(parsedNY, null, 2));
+/* Example Output:
+Parsed NY: {
+  "stdAbbr": "EST",
+  "stdOffset": -300,
+  "dst": true,
+  "dstAbbr": "EDT",
+  "dstOffset": -240,
+  "dstStart": { "month": 3, "week": 2, "day": 0, "hour": 2, "minute": 0, "second": 0 },
+  "dstEnd": { "month": 11, "week": 1, "day": 0, "hour": 2, "minute": 0, "second": 0 }
+}
+*/
+
+// 3. Get offset/abbr for a local summer date in NY
+const summerDateNY = '2025-07-04T10:00:00'; // Local time in NY
+const summerOffsetInfo = posixtz.getOffsetForLocalDateWithPosixTZ(summerDateNY, nyPosix);
+console.log(`Offset/Abbr for ${summerDateNY} in NY:`, summerOffsetInfo);
+// Example Output: Offset/Abbr for 2025-07-04T10:00:00 in NY: { offset: -240, abbr: 'EDT' }
+
+// 4. Get offset/abbr for a local winter date in NY
+const winterDateNY = '2025-01-15T10:00:00'; // Local time in NY
+const winterOffsetInfo = posixtz.getOffsetForLocalDateWithPosixTZ(winterDateNY, nyPosix);
+console.log(`Offset/Abbr for ${winterDateNY} in NY:`, winterOffsetInfo);
+// Example Output: Offset/Abbr for 2025-01-15T10:00:00 in NY: { offset: -300, abbr: 'EST' }
+
+// 5. Format a local date with the correct POSIX offset
+const formattedSummerNY = posixtz.formatLocalDateWithOffset(summerDateNY, nyPosix);
+console.log(`Formatted summer date in NY:`, formattedSummerNY);
+// Example Output: Formatted summer date in NY: 2025-07-04T10:00:00-04:00
+
+const formattedWinterNY = posixtz.formatLocalDateWithOffset(winterDateNY, nyPosix);
+console.log(`Formatted winter date in NY:`, formattedWinterNY);
+// Example Output: Formatted winter date in NY: 2025-01-15T10:00:00-05:00
+
+// --- Using additional global functions ---
+
+// 6. Get offset in hours
+const summerOffsetHours = getOffset_PosixTZ(summerDateNY, nyPosix, 'hour');
+console.log(`Summer offset in hours:`, summerOffsetHours);
+// Example Output: Summer offset in hours: -4
+
+// 7. Get abbreviation
+const winterAbbr = getAbbr_PosixTZ(winterDateNY, nyPosix);
+console.log(`Winter abbreviation:`, winterAbbr);
+// Example Output: Winter abbreviation: EST
+
+// 8. Custom date formatting including POSIX abbreviation
+const customFormat = 'MMM Do YYYY, h:mm:ss a z';
+const customFormattedSummer = dateFormat_PosixTZ(summerDateNY, nyPosix, customFormat);
+console.log(`Custom formatted summer:`, customFormattedSummer);
+// Example Output: Custom formatted summer: Jul 4th 2025, 10:00:00 am EDT
+
+const customFormattedWinter = dateFormat_PosixTZ(winterDateNY, nyPosix, customFormat);
+console.log(`Custom formatted winter:`, customFormattedWinter);
+// Example Output: Custom formatted winter: Jan 15th 2025, 10:00:00 am EST</code></pre>
+
+    <h2>Notes</h2>
+    <ul>
+        <li>The accuracy of <code>formatPosixTZ</code> depends heavily on the completeness and accuracy of the timezone data loaded into <code>moment-timezone.js</code>.</li>
+        <li>Parsing POSIX TZ strings (<code>parsePosixTZ</code>) can be complex due to the variations in the format. This implementation might not cover all edge cases, especially the <code>J</code> (Julian day) format for transitions.</li>
+        <li>Functions like <code>getOffsetForLocalDateWithPosixTZ</code> and the related helpers expect the <code>localDate</code> input to represent the time <em>as observed locally</em> in the target timezone, not a UTC timestamp. The function then calculates the corresponding UTC offset for that local time based on the POSIX rules.</li>
+        <li>The implementation of DST transition calculation (<code>transitionToDate</code> internal function) uses UTC moments internally to determine the exact transition points based on the POSIX rules relative to UTC offsets.</li>
+    </ul>
+
+</body>
+</html>
