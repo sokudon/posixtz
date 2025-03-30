@@ -196,10 +196,8 @@
 
 // --- Using functions within posixtz ---
 
-// 1. Generate POSIX string for America/New_York for 2025
-const nyPosix = posixtz.formatPosixTZ('America/New_York', 2025);
-console.log('New York POSIX (2025):', nyPosix);
-// Example Output: New York POSIX (2025): EST5EDT,M3.2.0/2,M11.1.0/2
+// 1. SET POSIX string for America/New_York for 2025
+const nyPosix = "EST5EDT,M3.2.0/2,M11.1.0/2";
 
 // 2. Parse the generated POSIX string
 const parsedNY = posixtz.parsePosixTZ(nyPosix);
